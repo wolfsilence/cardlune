@@ -1,3 +1,4 @@
+
 name: 🚀 Deploy to App Store Connect
 
 on:
@@ -22,8 +23,8 @@ jobs:
       EXPORT_OPTIONS: ./ExportOptions.plist
 
       # ★★★ 换项目名和包名只改下面两行 ★★★
-      PROJECT_NAME:   "Cardelune"
-      BUNDLE_ID:      "com.Cardelune"
+      PROJECT_NAME:   "CardeluneTest"
+      BUNDLE_ID:      "com.CardeluneTest"
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -77,9 +78,16 @@ jobs:
             echo "✅ pbxproj 内引用全部替换"
           fi
 
-          # --- 修改 Bundle ID ---
           PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
-          sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBXPROJ"
+
+          # --- 修改 Bundle ID（仅不同时替换）---
+          OLD_BUNDLE=$(grep -m1 'PRODUCT_BUNDLE_IDENTIFIER = ' "$PBXPROJ" | sed 's/.*PRODUCT_BUNDLE_IDENTIFIER = \(.*\);/\1/')
+          if [ "$OLD_BUNDLE" = "$BUNDLE_ID" ]; then
+            echo "Bundle ID 未变，跳过"
+          else
+            sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBXPROJ"
+            echo "✅ Bundle ID: $OLD_BUNDLE → $BUNDLE_ID"
+          fi
 
           # --- Build Number ---
           BUILD_NUMBER=${{ github.run_number }}
