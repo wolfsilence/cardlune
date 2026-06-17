@@ -18,11 +18,11 @@ jobs:
     runs-on: macos-latest
 
     env:
-      TEAM_ID:        "262TL285Q2"
       EXPORT_DIR:     ./build
       EXPORT_OPTIONS: ./ExportOptions.plist
 
-      # ★★★ 每次打包前修改下面两行（版本号直接从 Xcode 项目读取） ★★★
+      # ★★★ 换项目只改下面三行 ★★★
+      TEAM_ID:        "262TL285Q2"
       PROJECT_NAME:   "CardeluneTest"
       BUNDLE_ID:      "com.CardeluneTest"
 
@@ -57,7 +57,7 @@ jobs:
           echo "$ASC_API_KEY" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
           chmod 600 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
-          cat > $EXPORT_OPTIONS << 'PLIST'
+          cat > $EXPORT_OPTIONS << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -65,7 +65,7 @@ jobs:
               <key>method</key>
               <string>app-store</string>
               <key>teamID</key>
-              <string>262TL285Q2</string>
+              <string>${TEAM_ID}</string>
               <key>uploadSymbols</key>
               <true/>
               <key>uploadBitcode</key>
