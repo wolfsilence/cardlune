@@ -2,18 +2,6 @@ name: 🚀 Deploy to App Store Connect
 
 on:
   workflow_dispatch:
-    inputs:
-      app_name:
-        description: 'App 名称（显示在手机上的名字）'
-        type: string
-        required: false
-        default: 'Cardelune'
-
-      bundle_id:
-        description: 'Bundle ID（如 com.xxx.yyy）'
-        type: string
-        required: false
-        default: 'com.Cardelune'
 
   push:
     tags:
@@ -34,6 +22,10 @@ jobs:
       EXPORT_DIR:     ./build
       EXPORT_OPTIONS: ./ExportOptions.plist
       TEAM_ID:        "262TL285Q2"
+
+      # ★★★ 要换包名/名字，只改下面两行即可 ★★★
+      NEW_APP_NAME:   "Cardelune"
+      NEW_BUNDLE_ID:  "com.Cardelune"
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -57,9 +49,6 @@ jobs:
       # 3. 修改工程 → 编译验证 → 失败则终止
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: 🔄 Modify & Compile Check
-        env:
-          NEW_APP_NAME:  ${{ github.event.inputs.app_name || 'Cardelune' }}
-          NEW_BUNDLE_ID: ${{ github.event.inputs.bundle_id || 'com.Cardelune' }}
         run: |
           PBXPROJ="Cardelune.xcodeproj/project.pbxproj"
 
@@ -188,6 +177,6 @@ jobs:
           echo ""
           echo "══════════════════════════════════════════════"
           echo "  上传完成！去 App Store Connect 手动提审。"
-          echo "  Bundle: ${{ github.event.inputs.bundle_id || 'com.Cardelune' }}"
+          echo "  Bundle: $NEW_BUNDLE_ID"
           echo "  Build #${{ github.run_number }}"
           echo "══════════════════════════════════════════════"
