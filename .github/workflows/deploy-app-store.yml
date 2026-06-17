@@ -53,8 +53,8 @@ jobs:
           echo "  🔄 重命名项目"
           echo "═════════════════════════════════════"
 
-          # 找出原来的项目名（从 .xcodeproj 推断）
-          OLD_NAME=$(ls *.xcodeproj | head -1 | sed 's/\.xcodeproj//')
+          # 找出原来的项目名（用 find 避免 ls 通配符问题）
+          OLD_NAME=$(find . -maxdepth 1 -name '*.xcodeproj' -type d | head -1 | sed 's|^\./||; s|\.xcodeproj$||')
           echo "原项目名: $OLD_NAME"
           echo "新项目名: $PROJECT_NAME"
           echo "新 Bundle: $BUNDLE_ID"
