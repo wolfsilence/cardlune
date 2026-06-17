@@ -13,19 +13,17 @@ concurrency:
 
 jobs:
   deploy:
-    name: Modify → Compile Check → Deploy
+    name: Rename → Compile Check → Deploy
     runs-on: macos-latest
 
     env:
-      SCHEME:         Cardelune
-      ARCHIVE_PATH:   ./build/Cardelune.xcarchive
+      TEAM_ID:        "262TL285Q2"
       EXPORT_DIR:     ./build
       EXPORT_OPTIONS: ./ExportOptions.plist
-      TEAM_ID:        "262TL285Q2"
 
-      # ★★★ 要换包名/名字，只改下面两行即可 ★★★
-      NEW_APP_NAME:   "Cardelune"
-      NEW_BUNDLE_ID:  "com.Cardelune"
+      # ★★★ 换项目名和包名只改下面两行 ★★★
+      PROJECT_NAME:   "Cardelune"
+      BUNDLE_ID:      "com.Cardelune"
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -46,39 +44,58 @@ jobs:
           echo "iOS SDK $(xcrun --sdk iphoneos --show-sdk-version)"
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 3. 修改工程 → 编译验证 → 失败则终止
+      # 3. 重命名项目 → 编译验证 → 失败则终止
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      - name: 🔄 Modify & Compile Check
+      - name: 🔄 Rename Project & Compile Check
         run: |
-          PBXPROJ="Cardelune.xcodeproj/project.pbxproj"
-
           echo "═════════════════════════════════════"
-          echo "  🔄 修改工程配置"
+          echo "  🔄 重命名项目"
           echo "═════════════════════════════════════"
-          echo "App Name : $NEW_APP_NAME"
-          echo "Bundle ID: $NEW_BUNDLE_ID"
 
-          # --- Bundle ID ---
-          sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $NEW_BUNDLE_ID;/g" "$PBXPROJ"
+          # 找出原来的项目名（从 .xcodeproj 推断）
+          OLD_NAME=$(ls *.xcodeproj | head -1 | sed 's/\.xcodeproj//')
+          echo "原项目名: $OLD_NAME"
+          echo "新项目名: $PROJECT_NAME"
+          echo "新 Bundle: $BUNDLE_ID"
 
-          # --- App Name ---
-          sed -i '' "s/PRODUCT_NAME = \"[^\"]*\";/PRODUCT_NAME = \"$NEW_APP_NAME\";/g" "$PBXPROJ"
+          if [ "$OLD_NAME" = "$PROJECT_NAME" ]; then
+            echo "项目名未变，跳过重命名"
+          else
+            # 1) 重命名源文件夹
+            if [ -d "$OLD_NAME" ]; then
+              mv "$OLD_NAME" "$PROJECT_NAME"
+              echo "✅ 文件夹: $OLD_NAME → $PROJECT_NAME"
+            fi
+
+            # 2) 重命名 .xcodeproj
+            mv "${OLD_NAME}.xcodeproj" "${PROJECT_NAME}.xcodeproj"
+            echo "✅ xcodeproj: ${OLD_NAME}.xcodeproj → ${PROJECT_NAME}.xcodeproj"
+
+            # 3) 替换 project.pbxproj 中所有旧项目名
+            PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
+            sed -i '' "s/${OLD_NAME}/${PROJECT_NAME}/g" "$PBXPROJ"
+            echo "✅ pbxproj 内引用全部替换"
+          fi
+
+          # --- 修改 Bundle ID ---
+          PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
+          sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBXPROJ"
 
           # --- Build Number ---
           BUILD_NUMBER=${{ github.run_number }}
           sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" "$PBXPROJ"
 
           echo ""
-          echo "修改后的配置:"
-          grep -E 'PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CURRENT_PROJECT_VERSION' "$PBXPROJ" | sort -u
+          echo "修改后配置:"
+          grep -E 'PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CURRENT_PROJECT_VERSION|name = |productName = |path = ' "$PBXPROJ" | sort -u | head -10
 
           echo ""
           echo "═════════════════════════════════════"
-          echo "  🔨 编译验证 (xcodebuild build)"
+          echo "  🔨 编译验证"
           echo "═════════════════════════════════════"
 
           xcodebuild build \
-            -scheme "$SCHEME" \
+            -scheme "$PROJECT_NAME" \
             -destination 'generic/platform=iOS' \
             -quiet
 
@@ -127,8 +144,10 @@ jobs:
           ASC_KEY_ID:    ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
+          ARCHIVE_PATH="./build/${PROJECT_NAME}.xcarchive"
+
           xcodebuild archive \
-            -scheme "$SCHEME" \
+            -scheme "$PROJECT_NAME" \
             -archivePath "$ARCHIVE_PATH" \
             -destination 'generic/platform=iOS' \
             -allowProvisioningUpdates \
@@ -147,7 +166,7 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
           xcodebuild -exportArchive \
-            -archivePath "$ARCHIVE_PATH" \
+            -archivePath "./build/${PROJECT_NAME}.xcarchive" \
             -exportPath "$EXPORT_DIR" \
             -exportOptionsPlist "$EXPORT_OPTIONS" \
             -allowProvisioningUpdates \
@@ -177,6 +196,7 @@ jobs:
           echo ""
           echo "══════════════════════════════════════════════"
           echo "  上传完成！去 App Store Connect 手动提审。"
-          echo "  Bundle: $NEW_BUNDLE_ID"
+          echo "  项目名: $PROJECT_NAME"
+          echo "  Bundle: $BUNDLE_ID"
           echo "  Build #${{ github.run_number }}"
           echo "══════════════════════════════════════════════"
