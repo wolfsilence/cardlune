@@ -111,7 +111,7 @@ jobs:
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
             -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationIssuerID "$ASC_ISSUER_ID"
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
           echo "✅ Archive done"
 
@@ -130,7 +130,7 @@ jobs:
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
             -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationIssuerID "$ASC_ISSUER_ID"
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
           echo "✅ IPA exported → $(ls -lh $EXPORT_DIR/*.ipa)"
 
