@@ -45,73 +45,7 @@ jobs:
           echo "iOS SDK $(xcrun --sdk iphoneos --show-sdk-version)"
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 3. 重命名项目 → 编译验证 → 失败则终止
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      - name: 🔄 Rename Project & Compile Check
-        run: |
-          echo "═════════════════════════════════════"
-          echo "  🔄 重命名项目"
-          echo "═════════════════════════════════════"
-
-          # 找出原来的项目名（用 find 避免 ls 通配符问题）
-          OLD_NAME=$(find . -maxdepth 1 -name '*.xcodeproj' -type d | head -1 | sed 's|^\./||; s|\.xcodeproj$||')
-          echo "原项目名: $OLD_NAME"
-          echo "新项目名: $PROJECT_NAME"
-          echo "新 Bundle: $BUNDLE_ID"
-
-          if [ "$OLD_NAME" = "$PROJECT_NAME" ]; then
-            echo "项目名未变，跳过重命名"
-          else
-            # 1) 重命名源文件夹
-            if [ -d "$OLD_NAME" ]; then
-              mv "$OLD_NAME" "$PROJECT_NAME"
-              echo "✅ 文件夹: $OLD_NAME → $PROJECT_NAME"
-            fi
-
-            # 2) 重命名 .xcodeproj
-            mv "${OLD_NAME}.xcodeproj" "${PROJECT_NAME}.xcodeproj"
-            echo "✅ xcodeproj: ${OLD_NAME}.xcodeproj → ${PROJECT_NAME}.xcodeproj"
-
-            # 3) 替换 project.pbxproj 中所有旧项目名
-            PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
-            sed -i '' "s/${OLD_NAME}/${PROJECT_NAME}/g" "$PBXPROJ"
-            echo "✅ pbxproj 内引用全部替换"
-          fi
-
-          PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
-
-          # --- 修改 Bundle ID（仅不同时替换）---
-          OLD_BUNDLE=$(grep -m1 'PRODUCT_BUNDLE_IDENTIFIER = ' "$PBXPROJ" | sed 's/.*PRODUCT_BUNDLE_IDENTIFIER = \(.*\);/\1/')
-          if [ "$OLD_BUNDLE" = "$BUNDLE_ID" ]; then
-            echo "Bundle ID 未变，跳过"
-          else
-            sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBXPROJ"
-            echo "✅ Bundle ID: $OLD_BUNDLE → $BUNDLE_ID"
-          fi
-
-          # --- Build Number ---
-          BUILD_NUMBER=${{ github.run_number }}
-          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" "$PBXPROJ"
-
-          echo ""
-          echo "修改后配置:"
-          grep -E 'PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CURRENT_PROJECT_VERSION|name = |productName = |path = ' "$PBXPROJ" | sort -u | head -10
-
-          echo ""
-          echo "═════════════════════════════════════"
-          echo "  🔨 编译验证"
-          echo "═════════════════════════════════════"
-
-          xcodebuild build \
-            -scheme "$PROJECT_NAME" \
-            -destination 'generic/platform=iOS' \
-            -quiet
-
-          echo ""
-          echo "✅ 编译通过！继续打包上传..."
-
-      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 4. Setup ASC credentials & ExportOptions
+      # 3. Setup ASC credentials (必须在编译前)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: 🔑 Setup App Store Connect
         env:
@@ -143,6 +77,71 @@ jobs:
           PLIST
 
           echo "✅ ASC credentials ready"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 4. 重命名项目 → 编译验证 → 失败则终止
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 🔄 Rename Project & Compile Check
+        env:
+          ASC_KEY_ID:    ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          echo "═════════════════════════════════════"
+          echo "  🔄 重命名项目"
+          echo "═════════════════════════════════════"
+
+          OLD_NAME=$(find . -maxdepth 1 -name '*.xcodeproj' -type d | head -1 | sed 's|^\./||; s|\.xcodeproj$||')
+          echo "原项目名: $OLD_NAME"
+          echo "新项目名: $PROJECT_NAME"
+          echo "新 Bundle: $BUNDLE_ID"
+
+          if [ "$OLD_NAME" = "$PROJECT_NAME" ]; then
+            echo "项目名未变，跳过重命名"
+          else
+            if [ -d "$OLD_NAME" ]; then
+              mv "$OLD_NAME" "$PROJECT_NAME"
+              echo "✅ 文件夹: $OLD_NAME → $PROJECT_NAME"
+            fi
+            mv "${OLD_NAME}.xcodeproj" "${PROJECT_NAME}.xcodeproj"
+            echo "✅ xcodeproj: ${OLD_NAME}.xcodeproj → ${PROJECT_NAME}.xcodeproj"
+            PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
+            sed -i '' "s/${OLD_NAME}/${PROJECT_NAME}/g" "$PBXPROJ"
+            echo "✅ pbxproj 内引用全部替换"
+          fi
+
+          PBXPROJ="${PROJECT_NAME}.xcodeproj/project.pbxproj"
+
+          OLD_BUNDLE=$(grep -m1 'PRODUCT_BUNDLE_IDENTIFIER = ' "$PBXPROJ" | sed 's/.*PRODUCT_BUNDLE_IDENTIFIER = \(.*\);/\1/')
+          if [ "$OLD_BUNDLE" = "$BUNDLE_ID" ]; then
+            echo "Bundle ID 未变，跳过"
+          else
+            sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBXPROJ"
+            echo "✅ Bundle ID: $OLD_BUNDLE → $BUNDLE_ID"
+          fi
+
+          BUILD_NUMBER=${{ github.run_number }}
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" "$PBXPROJ"
+
+          echo ""
+          echo "修改后配置:"
+          grep -E 'PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CURRENT_PROJECT_VERSION|name = |productName = |path = ' "$PBXPROJ" | sort -u | head -10
+
+          echo ""
+          echo "═════════════════════════════════════"
+          echo "  🔨 编译验证"
+          echo "═════════════════════════════════════"
+
+          xcodebuild build \
+            -scheme "$PROJECT_NAME" \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -quiet
+
+          echo ""
+          echo "✅ 编译通过！继续打包上传..."
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       # 5. Archive
