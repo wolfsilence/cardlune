@@ -22,9 +22,10 @@ jobs:
       EXPORT_DIR:     ./build
       EXPORT_OPTIONS: ./ExportOptions.plist
 
-      # ★★★ 换项目名和包名只改下面两行 ★★★
+      # ★★★ 每次打包前修改下面三行 ★★★
       PROJECT_NAME:   "CardeluneTest"
       BUNDLE_ID:      "com.CardeluneTest"
+      VERSION:        "1.0.2"
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -122,9 +123,12 @@ jobs:
           BUILD_NUMBER=${{ github.run_number }}
           sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" "$PBXPROJ"
 
+          # --- 修改 Version ---
+          sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/g" "$PBXPROJ"
+
           echo ""
           echo "修改后配置:"
-          grep -E 'PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CURRENT_PROJECT_VERSION|name = |productName = |path = ' "$PBXPROJ" | sort -u | head -10
+          grep -E 'PRODUCT_BUNDLE_IDENTIFIER|PRODUCT_NAME|CURRENT_PROJECT_VERSION|MARKETING_VERSION' "$PBXPROJ" | sort -u | head -10
 
           echo ""
           echo "═════════════════════════════════════"
@@ -204,6 +208,6 @@ jobs:
           echo "══════════════════════════════════════════════"
           echo "  上传完成！去 App Store Connect 手动提审。"
           echo "  项目名: $PROJECT_NAME"
+          echo "  Version: $VERSION (Build #${{ github.run_number }})"
           echo "  Bundle: $BUNDLE_ID"
-          echo "  Build #${{ github.run_number }}"
           echo "══════════════════════════════════════════════"
